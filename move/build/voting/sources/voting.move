@@ -195,7 +195,7 @@ module voting::voting {
         
         // Manually destroy vote_counts
         while (!vec_map::is_empty(&vote_counts)) {
-            let (key, _) = vec_map::pop(&mut vote_counts);
+            let (_key, _) = vec_map::pop(&mut vote_counts);
         };
         vec_map::destroy_empty(vote_counts);
         

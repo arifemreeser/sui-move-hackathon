@@ -50,7 +50,7 @@ module voting::helpers {
     public fun calculate_total_votes(vote_counts: &VecMap<u64, u64>): u64 {
         let mut total = 0u64;
         let mut i = 0u64;
-        let size = vec_map::size(vote_counts);
+        let size = vec_map::length(vote_counts);
         
         while (i < size) {
             let (_key, value) = vec_map::get_entry_by_idx(vote_counts, i);
