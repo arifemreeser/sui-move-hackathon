@@ -1,86 +1,85 @@
-import { Link } from 'react-router-dom';
-import { useAllVotings } from '@/hooks/useSuiClient';
-import { formatRelativeTime, formatAddress } from '@/lib/utils';
-import { Loader2, Plus, Clock, User } from 'lucide-react';
+import { Box, Button, Container, Flex, Heading, Text, Card } from "@radix-ui/themes";
+import { useNavigate } from "react-router-dom";
+import { PlusIcon } from "@radix-ui/react-icons";
+import { useVotingEvents } from "../hooks/useEvents";
+import { useCurrentAccount } from "@mysten/dapp-kit";
 
-export default function Home() {
-  const { data: votings, isLoading } = useAllVotings();
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+export function Home() {
+  const navigate = useNavigate();
+  const account = useCurrentAccount();
+  const { data: votings, loading: isPending } = useVotingEvents();
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-4xl font-bold">Active Polls</h1>
-          <p className="text-muted-foreground mt-2">
-            Participate in decentralized voting
-          </p>
-        </div>
-        <Link
-          to="/create"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition"
-        >
-          <Plus className="w-5 h-5" />
-          Create Poll
-        </Link>
-      </div>
+    <Container size="3" py="6">
+      <Flex direction="column" gap="6">
+        <Box>
+          <Heading size="8" mb="2">Voting Platform</Heading>
+          <Text size="4" color="gray">
+            Create polls and let the community vote
+          </Text>
+        </Box>
 
-      {/* Polls Grid */}
-      {!votings || votings.length === 0 ? (
-        <div className="text-center py-16">
-          <p className="text-muted-foreground text-lg">No polls yet</p>
-          <Link
-            to="/create"
-            className="inline-block mt-4 text-primary hover:underline"
-          >
-            Create the first poll →
-          </Link>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {votings.map((voting) => (
-            <Link
-              key={voting.id}
-              to={`/poll/${voting.id}`}
-              className="block p-6 bg-card rounded-lg border hover:border-primary transition-all hover:shadow-lg"
-            >
-              <h3 className="font-semibold text-lg mb-3 line-clamp-2">
-                {voting.question}
-              </h3>
+        <Card style={{ padding: "1rem" }}>
+          <Flex direction="column" gap="4">
+            <Heading size="5">Get Started</Heading>
+            <Text>
+              Create your first voting poll by clicking the button below.
+              You can add a question, options, and set an end time.
+            </Text>
+            <Button size="3" onClick={() => navigate("/create")} disabled={!account}>
+              <PlusIcon />
+              Create New Poll
+            </Button>
+            {!account && (
+              <Text size="2" color="gray">
+                Please connect your wallet to create a poll
+              </Text>
+            )}
+          </Flex>
+        </Card>
 
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <User className="w-4 h-4" />
-                  <span>{formatAddress(voting.creator)}</span>
-                </div>
+        <Box>
+          <Heading size="5" mb="4">
+            Latest Polls {votings && `(${votings.length})`}
+          </Heading>
 
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  <span>{formatRelativeTime(voting.timestamp)}</span>
-                </div>
+          {isPending ? (
+            <Text>Loading polls...</Text>
+          ) : !votings || votings.length === 0 ? (
+            <Card style={{ padding: "1rem" }}>
+              <Text color="gray">No polls yet. Create one to get started!</Text>
+            </Card>
+          ) : (
+            <Flex direction="column" gap="3">
+              {votings.map((voting) => (
+                <Card key={voting.voting_id} style={{ padding: "1rem" }}>
+                  <Flex direction="column" gap="3">
+                    <Flex justify="between" align="start">
+                      <Flex direction="column" gap="1" style={{ flex: 1 }}>
+                        <Heading size="4">{voting.question}</Heading>
+                        <Text size="2" color="gray">
+                          Created by {voting.creator.slice(0, 8)}...
+                        </Text>
+                      </Flex>
+                    </Flex>
 
-                <div className="pt-2 text-xs">
-                  {voting.optionsCount} options
-                </div>
-              </div>
+                    <Text size="2" color="gray">
+                      {voting.options_count} options
+                    </Text>
 
-              <div className="mt-4 pt-4 border-t">
-                <span className="text-sm font-medium text-primary">
-                  View Details →
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
-    </div>
+                    <Button
+                      variant="soft"
+                      onClick={() => navigate(`/poll/${voting.voting_id}`)}
+                    >
+                      View Details
+                    </Button>
+                  </Flex>
+                </Card>
+              ))}
+            </Flex>
+          )}
+        </Box>
+      </Flex>
+    </Container>
   );
 }

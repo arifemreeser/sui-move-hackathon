@@ -1,6 +1,5 @@
 module voting::events {
     use sui::event;
-    use sui::object::ID;
     use std::string::String;
 
     /// Event emitted when a new voting is created

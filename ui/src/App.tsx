@@ -1,38 +1,48 @@
-import { Routes, Route, Link } from 'react-router-dom';
-import { Layout } from './components';
-import Home from './pages/Home';
-import CreatePoll from './pages/CreatePoll';
-import PollDetails from './pages/PollDetails';
-import { AlertCircle } from 'lucide-react';
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ConnectButton } from "@mysten/dapp-kit";
+import { Box, Container, Flex, Heading, Button } from "@radix-ui/themes";
+import { Toaster } from "sonner";
+import { Home } from "./pages/Home";
+import { CreatePoll } from "./pages/CreatePoll";
+import { PollDetails } from "./pages/PollDetails";
+import Admin from "./pages/Admin";
 
 function App() {
   return (
-    <Layout>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/create" element={<CreatePoll />} />
-        <Route path="/poll/:id" element={<PollDetails />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </Layout>
-  );
-}
-
-function NotFound() {
-  return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
-      <AlertCircle className="w-16 h-16 text-destructive mb-4" />
-      <h1 className="text-4xl font-bold mb-2">404</h1>
-      <p className="text-muted-foreground mb-6">
-        The page you're looking for doesn't exist
-      </p>
-      <Link
-        to="/"
-        className="inline-flex items-center justify-center px-6 py-3 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+    <>
+      <Flex
+        position="sticky"
+        px="4"
+        py="2"
+        justify="between"
+        align="center"
+        style={{
+          borderBottom: "1px solid var(--gray-a2)",
+        }}
       >
-        Back to Home
-      </Link>
-    </div>
+        <Box>
+          <Heading>Voting Platform</Heading>
+        </Box>
+
+        <Flex gap="3" align="center">
+          <Button variant="ghost" onClick={() => window.location.href = "/admin"}>
+            Admin
+          </Button>
+          <ConnectButton />
+        </Flex>
+      </Flex>
+      <Container>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/create" element={<CreatePoll />} />
+            <Route path="/poll/:id" element={<PollDetails />} />
+            <Route path="/admin" element={<Admin />} />
+          </Routes>
+        </BrowserRouter>
+      </Container>
+      <Toaster position="top-right" />
+    </>
   );
 }
 

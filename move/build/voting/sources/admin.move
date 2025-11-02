@@ -17,12 +17,12 @@ module voting::admin {
     }
 
     /// Error codes
-    const E_NOT_ADMIN: u64 = 100;
-    const E_PLATFORM_PAUSED: u64 = 101;
-    const E_INVALID_FEE: u64 = 102;
+    const ENotAdmin: u64 = 100;
+    const EPlatformPaused: u64 = 101;
+    const EInvalidFee: u64 = 102;
 
     /// Maximum platform fee (10%)
-    const MAX_PLATFORM_FEE: u64 = 1000;
+    const MaxPlatformFee: u64 = 1000;
 
     /// Initialize the admin module - called once during publishing
     fun init(ctx: &mut TxContext) {
@@ -41,6 +41,50 @@ module voting::admin {
         transfer::share_object(config);
     }
 
+
+    /// Update platform fee (admin only)
+    public fun update_platform_fee(
+        _: &AdminCap,
+        config: &mut PlatformConfig,
+        new_fee: u64,
+        ctx: &mut TxContext
+    ) {
+        assert_admin(config, ctx.sender());
+        assert!(new_fee <= MaxPlatformFee, EInvalidFee);
+        config.platform_fee = new_fee;
+    }
+
+    /// Pause platform (admin only)
+    public fun pause_platform(
+        _: &AdminCap,
+        config: &mut PlatformConfig,
+        ctx: &mut TxContext
+    ) {
+        assert_admin(config, tx_context::sender(ctx));
+        config.paused = true;
+    }
+
+    /// Unpause platform (admin only)
+    public fun unpause_platform(
+        _: &AdminCap,
+        config: &mut PlatformConfig,
+        ctx: &mut TxContext
+    ) {
+        assert_admin(config, tx_context::sender(ctx));
+        config.paused = false;
+    }
+
+    /// Transfer admin role (admin only)
+    public fun transfer_admin(
+        _: &AdminCap,
+        config: &mut PlatformConfig,
+        new_admin: address,
+        ctx: &mut TxContext
+    ) {
+        assert_admin(config, tx_context::sender(ctx));
+        config.admin = new_admin;
+    }
+
     /// Check if sender is admin
     public fun is_admin(config: &PlatformConfig, sender: address): bool {
         config.admin == sender
@@ -48,7 +92,7 @@ module voting::admin {
 
     /// Assert sender is admin
     public fun assert_admin(config: &PlatformConfig, sender: address) {
-        assert!(is_admin(config, sender), E_NOT_ADMIN);
+        assert!(is_admin(config, sender), ENotAdmin);
     }
 
     /// Check if platform is paused
@@ -58,60 +102,17 @@ module voting::admin {
 
     /// Assert platform is not paused
     public fun assert_not_paused(config: &PlatformConfig) {
-        assert!(!config.paused, E_PLATFORM_PAUSED);
-    }
-
-    /// Get platform fee
-    public fun get_platform_fee(config: &PlatformConfig): u64 {
-        config.platform_fee
-    }
-
-    /// Update platform fee (admin only)
-    public entry fun update_platform_fee(
-        _admin_cap: &AdminCap,
-        config: &mut PlatformConfig,
-        new_fee: u64,
-        ctx: &mut TxContext
-    ) {
-        assert_admin(config, tx_context::sender(ctx));
-        assert!(new_fee <= MAX_PLATFORM_FEE, E_INVALID_FEE);
-        config.platform_fee = new_fee;
-    }
-
-    /// Pause platform (admin only)
-    public entry fun pause_platform(
-        _admin_cap: &AdminCap,
-        config: &mut PlatformConfig,
-        ctx: &mut TxContext
-    ) {
-        assert_admin(config, tx_context::sender(ctx));
-        config.paused = true;
-    }
-
-    /// Unpause platform (admin only)
-    public entry fun unpause_platform(
-        _admin_cap: &AdminCap,
-        config: &mut PlatformConfig,
-        ctx: &mut TxContext
-    ) {
-        assert_admin(config, tx_context::sender(ctx));
-        config.paused = false;
-    }
-
-    /// Transfer admin role (admin only)
-    public entry fun transfer_admin(
-        _admin_cap: &AdminCap,
-        config: &mut PlatformConfig,
-        new_admin: address,
-        ctx: &mut TxContext
-    ) {
-        assert_admin(config, tx_context::sender(ctx));
-        config.admin = new_admin;
+        assert!(!config.paused, EPlatformPaused);
     }
 
     /// Get admin address
     public fun get_admin(config: &PlatformConfig): address {
         config.admin
+    }
+
+    /// Get platform fee
+    public fun get_platform_fee(config: &PlatformConfig): u64 {
+        config.platform_fee
     }
 
     #[test_only]

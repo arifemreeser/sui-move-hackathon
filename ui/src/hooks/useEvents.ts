@@ -1,104 +1,110 @@
-import { useEffect, useState } from 'react';
-import { useSuiClient } from '@mysten/dapp-kit';
-import { SuiEvent } from '@mysten/sui/client';
-import { PACKAGE_ID } from '@/lib/constants';
-import { VotingEvent } from '@/types';
+import { useEffect, useState } from "react";
+import { useSuiClient } from "@mysten/dapp-kit";
+import { SuiEvent } from "@mysten/sui/client";
+import { PACKAGE_ID } from "../constants";
+
+export interface VotingCreatedEvent {
+  voting_id: string;
+  creator: string;
+  question: string;
+  options_count: string;
+  end_time: string | null;
+  timestamp: string;
+}
+
+export interface VoteCastedEvent {
+  voting_id: string;
+  voter: string;
+  option_index: string;
+  timestamp: string;
+}
+
+export interface VotingClosedEvent {
+  voting_id: string;
+  closer: string;
+  total_votes: string;
+  timestamp: string;
+}
 
 export function useVotingEvents(votingId?: string) {
   const client = useSuiClient();
-  const [events, setEvents] = useState<VotingEvent[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [createdEvents, setCreatedEvents] = useState<VotingCreatedEvent[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    const fetchEvents = async () => {
+    async function fetchEvents() {
+      setLoading(true);
+      setError(null);
       try {
-        setIsLoading(true);
-        
-        const eventTypes = ['VotingCreated', 'VoteCasted', 'VotingClosed', 'VotingDeleted'];
-        const allEvents: VotingEvent[] = [];
-
-        for (const eventType of eventTypes) {
-          const result = await client.queryEvents({
-            query: {
-              MoveEventType: `${PACKAGE_ID}::events::${eventType}`,
+        const result = await client.queryEvents({
+          query: {
+            MoveModule: {
+              package: PACKAGE_ID,
+              module: "events",
             },
-            limit: 50,
-            order: 'descending',
-          });
+          },
+          limit: 100,
+          order: "descending",
+        });
 
-          const parsedEvents = result.data
-            .filter((event) => {
-              if (votingId && event.parsedJson) {
-                return event.parsedJson.voting_id === votingId;
-              }
-              return true;
-            })
-            .map((event) => ({
-              type: eventType as VotingEvent['type'],
-              votingId: event.parsedJson?.voting_id || '',
-              timestamp: event.parsedJson?.timestamp || Date.now(),
-              data: event.parsedJson,
-            }));
+        const votingCreatedEvents = result.data
+          .filter((event) => event.type.includes("VotingCreated"))
+          .filter((event) => {
+            if (votingId && event.parsedJson) {
+              return (event.parsedJson as any).voting_id === votingId;
+            }
+            return true;
+          })
+          .map((event) => event.parsedJson as VotingCreatedEvent);
 
-          allEvents.push(...parsedEvents);
-        }
-
-        allEvents.sort((a, b) => b.timestamp - a.timestamp);
-        setEvents(allEvents);
-      } catch (error) {
-        console.error('Error fetching events:', error);
+        setCreatedEvents(votingCreatedEvents);
+      } catch (err) {
+        setError(err as Error);
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
-    };
+    }
 
     fetchEvents();
-    const interval = setInterval(fetchEvents, 10000);
-
-    return () => clearInterval(interval);
   }, [client, votingId]);
 
-  return { events, isLoading };
+  return { data: createdEvents, loading, error };
 }
 
 export function useRealtimeVotes(votingId: string) {
   const client = useSuiClient();
-  const [voteCount, setVoteCount] = useState<number>(0);
+  const [voteCount, setVoteCount] = useState(0);
 
   useEffect(() => {
-    if (!votingId) return;
+    let unsubscribe: (() => void) | null = null;
 
-    const subscribeToVotes = async () => {
-      try {
-        const unsubscribe = await client.subscribeEvent({
-          filter: {
-            MoveEventType: `${PACKAGE_ID}::events::VoteCasted`,
+    async function setupSubscription() {
+      const unsub = await client.subscribeEvent({
+        filter: {
+          MoveModule: {
+            package: PACKAGE_ID,
+            module: "events",
           },
-          onMessage: (event: SuiEvent) => {
-            if (event.parsedJson?.voting_id === votingId) {
-              setVoteCount((prev) => prev + 1);
-            }
-          },
-        });
+        },
+        onMessage: (event: SuiEvent) => {
+          if ((event.parsedJson as any)?.voting_id === votingId) {
+            setVoteCount((prev) => prev + 1);
+          }
+        },
+      });
+      
+      unsubscribe = unsub;
+    }
 
-        return unsubscribe;
-      } catch (error) {
-        console.error('Error subscribing to events:', error);
-      }
-    };
-
-    let unsubscribeFn: (() => void) | undefined;
-
-    subscribeToVotes().then((unsub) => {
-      unsubscribeFn = unsub;
-    });
+    setupSubscription();
 
     return () => {
-      if (unsubscribeFn) {
-        unsubscribeFn();
+      if (unsubscribe) {
+        unsubscribe();
       }
     };
   }, [client, votingId]);
 
-  return voteCount;
+  return { voteCount };
 }
